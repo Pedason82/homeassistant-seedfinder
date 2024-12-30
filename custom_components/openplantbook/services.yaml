@@ -12,27 +12,22 @@ search:
 
 get:
   name: Get
-  description: Fetches data for a single species
+  description: Fetches data for a specific strain from a specific breeder
   fields:
     species:
-      name: Species
-      description: The name of the species exactly as written in "pid" or "scientific species" in Openplantbook
-      example: coleus 'marble'
+      name: Strain Name
+      description: The name of the strain/species
+      example: white-widow
       required: true
       selector:
         text:
-
-upload:
-  name: Upload
-  description: Upload sensors data of all plant instances
-#  fields:
-#    plant_instance:
-#      name: Plant Instance
-#      description: Plant instance name as in Plant Monitor
-#      example: Acer on balcony
-#      required: true
-#      selector:
-#        text:
+    breeder:
+      name: Breeder Name
+      description: The name of the breeder
+      example: greenhouse-seed-co
+      required: true
+      selector:
+        text:
 
 clean_cache:
   name: Clean Cache
