@@ -86,9 +86,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
 
     def extract_values_by_text(header_text, soup):
-        header = soup.find('h4', string=header_text)
+        header = soup.find("h4", string=header_text)
         if header:
-            values = [div.get_text(strip=True) for div in header.find_next('div').find_all('div', class_='bg-primary-500')]
+            values = [
+                div.get_text(strip=True)
+                for div in header.find_next("div").find_all(
+                    "div", class_="bg-primary-500"
+                )
+            ]
             return values
         return []
 
@@ -103,7 +108,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     def parse_tree(element, depth=0):
         tree = ""
-        if (element.name == "a"):
+        if element.name == "a":
             text = element.get_text(strip=True)
             href = element.get("href", "#")
             tree += "    " * depth + f"- {text} ##$##  {href}\n"
@@ -120,69 +125,81 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     def format_text(text):
         # Liste der Eigenschaften, die wir suchen
         properties = [
-            "Art der Sorte:", "THC:", "CBD:", "Genetischer hintergrund:", 
-            "Art:", "Ertrag Indoor:", "Ertrag Outdoor:", "Höhe Indoor:", 
-            "Höhe Outdoor:", "Blütephase:", "Erntemonat:", "Klimazone:", 
-            "Wirkung:", "Geschmack:"
+            "Art der Sorte:",
+            "THC:",
+            "CBD:",
+            "Genetischer hintergrund:",
+            "Art:",
+            "Ertrag Indoor:",
+            "Ertrag Outdoor:",
+            "Höhe Indoor:",
+            "Höhe Outdoor:",
+            "Blütephase:",
+            "Erntemonat:",
+            "Klimazone:",
+            "Wirkung:",
+            "Geschmack:",
         ]
-        
+
         # Textmuster für Überschriften
         headers = [
-            "Apple Fritter:", "Wirkung und Geschmack von", "Anbaueigenschaften von"
+            "Apple Fritter:",
+            "Wirkung und Geschmack von",
+            "Anbaueigenschaften von",
         ]
-        
+
         # Bereinige den Text von mehrfachen Leerzeichen
-        temp_text = ' '.join(text.split())
-        
+        temp_text = " ".join(text.split())
+
         # Extrahiere die Eigenschaften
         property_lines = []
         for prop in properties:
             if prop in temp_text:
                 start = temp_text.find(prop)
-                next_prop_start = float('inf')
-                
+                next_prop_start = float("inf")
+
                 # Finde die nächste Eigenschaft
                 for next_prop in properties:
                     if next_prop != prop:
                         pos = temp_text.find(next_prop, start + len(prop))
                         if pos != -1 and pos < next_prop_start:
                             next_prop_start = pos
-                
+
                 # Extrahiere den Wert
-                if next_prop_start == float('inf'):
+                if next_prop_start == float("inf"):
                     value = temp_text[start:].strip()
                 else:
                     value = temp_text[start:next_prop_start].strip()
-                
+
                 # Entferne den verarbeiteten Teil aus dem temporären Text
-                temp_text = temp_text[:start] + temp_text[start + len(value):]
-                
+                temp_text = temp_text[:start] + temp_text[start + len(value) :]
+
                 # Füge die Eigenschaft zur Liste hinzu
                 property_lines.append(value)
-        
+
         # Verarbeite den Haupttext
         main_text = temp_text.strip()
         for header in headers:
             main_text = main_text.replace(header, f"\n{header}")
-        
+
         # Teile den Haupttext in Zeilen
-        main_lines = [line.strip() for line in main_text.split('\n') if line.strip()]
-        
+        main_lines = [line.strip() for line in main_text.split("\n") if line.strip()]
+
         # Füge alle Teile zusammen
         result = []
-        
+
         # Füge den Haupttext hinzu
         if main_lines:
             result.extend(main_lines)
-        
+
         # Füge die Eigenschaften hinzu
         if property_lines:
             if result:  # Wenn es bereits Text gibt, füge eine Leerzeile ein
-                result.append('')
+                result.append("")
             result.extend(property_lines)
-        
+
         # Verbinde alles mit einzelnen Zeilenumbrüchen
-        return '\n'.join(result)
+        return "\n".join(result)
 
     def extract_strain_image(soup):
         """Extract the main strain image from the page."""
@@ -197,47 +214,53 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 main_image_url = src_attr[url_start:url_end]
                 _LOGGER.debug("Found main image URL: %s", main_image_url)
                 return main_image_url
-        
+
         _LOGGER.debug("No main image found in the page")
         return None
 
-    async def download_and_save_image(session, image_url, species, breeder, download_path):
+    async def download_and_save_image(
+        session, image_url, species, breeder, download_path
+    ):
         """Download and save image to local path."""
         if not image_url:
             return None
-            
+
         try:
             # Erstelle saubere Dateinamen
             filename = f"{breeder.replace(' ', '_')}_{species.replace(' ', '_')}.jpg"
             filepath = os.path.join(download_path, filename)
-            
+
             # Erstelle die URL für Home Assistant
-            www_path = download_path.split('/www/')[-1] if '/www/' in download_path else download_path
+            www_path = (
+                download_path.split("/www/")[-1]
+                if "/www/" in download_path
+                else download_path
+            )
             local_url = f"/local/{www_path}/{filename}"
-            
+
             # Prüfe ob der Download-Pfad existiert
             if not os.path.exists(download_path):
                 os.makedirs(download_path)
-            
+
             # Lade das Bild herunter
             async with session.get(image_url) as response:
                 if response.status != 200:
                     _LOGGER.error("Failed to download image from %s", image_url)
                     return None
-                    
+
                 image_data = await response.read()
-            
+
             # Speichere das Bild asynchron
             def write_file():
                 with open(filepath, "wb") as f:
                     f.write(image_data)
-            
+
             # Führe die Datei-Operation in einem Thread aus
             await hass.async_add_executor_job(write_file)
-                
+
             _LOGGER.debug("Saved image to %s, URL: %s", filepath, local_url)
             return local_url
-            
+
         except Exception as ex:
             _LOGGER.error("Error saving image: %s", ex)
             return None
@@ -255,136 +278,153 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         species = call.data.get(ATTR_SPECIES)
         breeder = call.data.get(ATTR_BREEDER)
-        
+
         if species is None or breeder is None:
             raise SeedfinderException(
                 "invalid service call, required attributes species and breeder missing"
             )
 
         _LOGGER.debug("get_plant %s from %s", species, breeder)
-        
+
         try:
             # First load breeder page to get strain details
             breeder_url = f'https://seedfinder.eu/de/database/breeder/{breeder.lower().replace(" ", "_")}/'
             _LOGGER.debug("Fetching from breeder URL: %s", breeder_url)
-            
+
             async with aiohttp.ClientSession() as session:
                 async with session.get(breeder_url) as response:
                     if response.status != 200:
-                        raise SeedfinderException(f"HTTP error {response.status} for URL {breeder_url}")
+                        raise SeedfinderException(
+                            f"HTTP error {response.status} for URL {breeder_url}"
+                        )
                     content = await response.text()
-            
-            soup = BeautifulSoup(content, 'html.parser')
-            
+
+            soup = BeautifulSoup(content, "html.parser")
+
             # Find the strain in the breeder's table
-            table = soup.find('table', class_='table')
+            table = soup.find("table", class_="table")
             if not table:
-                raise SeedfinderException(f"No strain table found for breeder {breeder}")
-                
-            rows = table.find('tbody').find_all('tr')
-            
+                raise SeedfinderException(
+                    f"No strain table found for breeder {breeder}"
+                )
+
+            rows = table.find("tbody").find_all("tr")
+
             # Look for the specific strain
             strain_data = None
             for row in rows:
-                cells = row.find_all('td')
+                cells = row.find_all("td")
                 if not cells:
                     continue
-                    
-                strain_name = cells[0].find('a')
+
+                strain_name = cells[0].find("a")
                 if strain_name and strain_name.text.strip().lower() == species.lower():
-                    strain_url = strain_name['href']
+                    strain_url = strain_name["href"]
                     strain_data = {
-                        'link': strain_url,
-                        'name': strain_name.text.strip(),
-                        'breeder': cells[1].text.strip(),
-                        'flowertime': cells[2].text.strip(),
-                        'sorte': cells[3].text.strip(),
-                        'feminized': cells[4].text.strip() if len(cells) > 4 else None
+                        "link": strain_url,
+                        "name": strain_name.text.strip(),
+                        "breeder": cells[1].text.strip(),
+                        "flowertime": cells[2].text.strip(),
+                        "sorte": cells[3].text.strip(),
+                        "feminized": cells[4].text.strip() if len(cells) > 4 else None,
                     }
                     break
-            
+
             if not strain_data:
-                raise SeedfinderException(f"Strain {species} not found for breeder {breeder}")
+                raise SeedfinderException(
+                    f"Strain {species} not found for breeder {breeder}"
+                )
 
             # Get additional strain information
             async with aiohttp.ClientSession() as session:
                 # Hole strain Informationen
-                async with session.get(strain_data['link']) as response:
+                async with session.get(strain_data["link"]) as response:
                     if response.status != 200:
-                        raise SeedfinderException(f"HTTP error {response.status} for URL {strain_data['link']}")
+                        raise SeedfinderException(
+                            f"HTTP error {response.status} for URL {strain_data['link']}"
+                        )
                     strain_content = await response.text()
 
-                strain_soup = BeautifulSoup(strain_content, 'html.parser')
-                
+                strain_soup = BeautifulSoup(strain_content, "html.parser")
+
                 # Extract additional information
-                headers = strain_soup.find_all('h2')
+                headers = strain_soup.find_all("h2")
                 info_texts = []
                 for header in headers:
-                    next_p = header.find_next('p')
+                    next_p = header.find_next("p")
                     if next_p:
                         # Entferne HTML-Tags und bereinige den Text
-                        header_text = ' '.join(header.get_text(strip=True).split())
+                        header_text = " ".join(header.get_text(strip=True).split())
                         paragraph_text = format_text(next_p.get_text(strip=True))
-                        info_texts.append({
-                            "header": header_text,
-                            "text": paragraph_text
-                        })
+                        info_texts.append(
+                            {"header": header_text, "text": paragraph_text}
+                        )
 
                 # Extract effects, smell, and taste
-                effects = extract_values_by_text('Effect/Effectiveness', strain_soup)
-                smells = extract_values_by_text('Smell / Aroma', strain_soup)
-                tastes = extract_values_by_text('Taste', strain_soup)
-                
+                effects = extract_values_by_text("Effect/Effectiveness", strain_soup)
+                smells = extract_values_by_text("Smell / Aroma", strain_soup)
+                tastes = extract_values_by_text("Taste", strain_soup)
+
                 # Extract lineage
                 lineage = extract_zoomist_container(strain_soup)
 
                 # Extract strain image and download it in the same session
                 image_url = extract_strain_image(strain_soup)
                 local_image_path = None
-                
+
                 if image_url:
                     # Prüfe ob Bilder heruntergeladen werden sollen
                     download_images = entry.options.get(FLOW_DOWNLOAD_IMAGES, False)
-                    download_path = entry.options.get(FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH)
-                    
+                    download_path = entry.options.get(
+                        FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH
+                    )
+
                     if download_images:
                         local_image_path = await download_and_save_image(
                             session,  # Verwende die aktive Session
-                            image_url, 
+                            image_url,
                             species,
                             breeder,
-                            download_path
+                            download_path,
                         )
 
             # Build response data
             pid = f"{species.lower().replace(' ', '-')}-{breeder.lower().replace(' ', '-')}"
             plant_data = {
                 "pid": pid,
-                "strain": strain_data['name'],
-                "breeder": strain_data['breeder'],
+                "strain": strain_data["name"],
+                "breeder": strain_data["breeder"],
                 "image_url": local_image_path if local_image_path else image_url,
-                "flowertime": strain_data['flowertime'],
-                "sorte": strain_data['sorte'],
-                "feminized": strain_data['feminized'],
-                "website": strain_data['link'],
-                "infotext1": f"{info_texts[0]['header']}\n{info_texts[0]['text']}" if info_texts else "",
-                "infotext2": f"{info_texts[1]['header']}\n{info_texts[1]['text']}" if len(info_texts) > 1 else "",
+                "flowertime": strain_data["flowertime"],
+                "sorte": strain_data["sorte"],
+                "feminized": strain_data["feminized"],
+                "website": strain_data["link"],
+                "infotext1": (
+                    f"{info_texts[0]['header']}\n{info_texts[0]['text']}"
+                    if info_texts
+                    else ""
+                ),
+                "infotext2": (
+                    f"{info_texts[1]['header']}\n{info_texts[1]['text']}"
+                    if len(info_texts) > 1
+                    else ""
+                ),
                 "effects": ", ".join(effects),
                 "smell": ", ".join(smells),
                 "taste": ", ".join(tastes),
                 "lineage": lineage,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             # Store in cache
             hass.data[DOMAIN][ATTR_SPECIES][pid] = plant_data
-            
+
             # Set state
             entity_id = async_generate_entity_id(
                 f"{DOMAIN}.{{}}", plant_data["pid"], current_ids={}
             )
             hass.states.async_set(entity_id, species, plant_data)
-            
+
             return plant_data
 
         except Exception as ex:

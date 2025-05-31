@@ -9,27 +9,34 @@ import time
 
 
 import logging
-logging.basicConfig(filename='seedscraper.log', level=logging.ERROR,
-                    format='%(asctime)s %(levelname)s %(name)s %(message)s')
-logger=logging.getLogger(__name__)
+
+logging.basicConfig(
+    filename="seedscraper.log",
+    level=logging.ERROR,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 fexists = False
-if os.path.exists('breeder.db'):
+if os.path.exists("breeder.db"):
     fexists = True
 
 sqlconnection = sqlite3.connect("breeder.db", check_same_thread=False)
 sqlcursor = sqlconnection.cursor()
 
 if fexists == False:
-    sqlcursor.execute('''CREATE TABLE breederlist
+    sqlcursor.execute(
+        """CREATE TABLE breederlist
                      (id INTEGER PRIMARY KEY AUTOINCREMENT,
                       breedername TEXT,
                       website TEXT,
-                      strainsnum INTEGER)''')
+                      strainsnum INTEGER)"""
+    )
 
     sqlconnection.commit()
 
-    sqlcursor.execute('''CREATE TABLE strainlist
+    sqlcursor.execute(
+        """CREATE TABLE strainlist
                      (id INTEGER PRIMARY KEY AUTOINCREMENT,
                       website TEXT,
                       strainname TEXT,
@@ -44,7 +51,8 @@ if fexists == False:
                       taste TEXT,
                       lineage TEXT,
                       pictures_base64 TEXT,
-                      userrating REAL)''')
+                      userrating REAL)"""
+    )
 
     sqlconnection.commit()
 
@@ -82,18 +90,18 @@ gui_showtext_000 = "Loading breader and strainlist."
 
 def getbrederdb():
 
-    URL = 'https://seedfinder.eu/en/database/breeder'
+    URL = "https://seedfinder.eu/en/database/breeder"
     website = requests.get(URL)
-    results = BeautifulSoup(website.content, 'html.parser')
+    results = BeautifulSoup(website.content, "html.parser")
 
-    breederlist_raw = results.find_all('div', class_='card')
+    breederlist_raw = results.find_all("div", class_="card")
     rawlist0 = []
     rawlist1 = []
     rawlist2 = []
     rawlist3 = []
 
     for breeder in breederlist_raw:
-        raw0 = breeder.find_all('ul', class_='list-disc list-inside')
+        raw0 = breeder.find_all("ul", class_="list-disc list-inside")
         rawlist0.append(raw0)
 
     for pa in rawlist0:
@@ -102,7 +110,7 @@ def getbrederdb():
 
     for pa in rawlist1:
         soup_string = str(pa)
-        br_tags = soup_string.split('<li>')
+        br_tags = soup_string.split("<li>")
         for s in br_tags:
             rawlist2.append(s)
 
@@ -110,7 +118,7 @@ def getbrederdb():
         ext_href_raw0 = pa.split('<a class="link" href="')
         for ch in ext_href_raw0:
             if len(ch) > 10:
-                ext_href_raw1 = ch.split('</a>')
+                ext_href_raw1 = ch.split("</a>")
                 rawlist3.append(ext_href_raw1[0])
 
     dataset = []
@@ -118,17 +126,20 @@ def getbrederdb():
         http_con_raw = sbree.split('">')
         http_con = http_con_raw[0]
 
-        name_raw = http_con_raw[1].split('\n')
+        name_raw = http_con_raw[1].split("\n")
         name = name_raw[0]
 
         num_raw = name_raw[1]
-        numbers = re.findall(r'\d+', num_raw)
+        numbers = re.findall(r"\d+", num_raw)
         strainumber = -1
         if numbers:
             strainumber = int(numbers[0])
 
         if len(name) > 1:
-            sqlcursor.execute("INSERT INTO breederlist (breedername, website, strainsnum) VALUES (?, ?, ?)", (name, http_con, strainumber))
+            sqlcursor.execute(
+                "INSERT INTO breederlist (breedername, website, strainsnum) VALUES (?, ?, ?)",
+                (name, http_con, strainumber),
+            )
             sqlconnection.commit()
             print("loading strainbase from: ", name)
             dataset.append(http_con)
@@ -136,22 +147,20 @@ def getbrederdb():
     return dataset
 
 
-
-
 def loadbreederstrains(URL):
     try:
         out = []
         website = requests.get(URL)
-        soup = BeautifulSoup(website.content, 'html.parser')
+        soup = BeautifulSoup(website.content, "html.parser")
 
-        table = soup.find('table', class_='table')
-        rows = table.find('tbody').find_all('tr')
+        table = soup.find("table", class_="table")
+        rows = table.find("tbody").find_all("tr")
 
         for row in rows:
-            cells = row.find_all('td')
+            cells = row.find_all("td")
 
-            link = cells[0].find('a')['href']
-            name = cells[0].find('a').text.strip()
+            link = cells[0].find("a")["href"]
+            name = cells[0].find("a").text.strip()
             breeder = cells[1].text.strip()
             flowertime = cells[2].text.strip()
             sorte = cells[3].text.strip()
@@ -159,9 +168,24 @@ def loadbreederstrains(URL):
 
             extradata = loadsinglestrain(link)
 
-            sqlvalues = (link, name, breeder, flowertime, sorte, feminized, extradata['infotext1'], extradata['infotext2'], extradata['effects'], extradata['smells'], extradata['tastes'], extradata['lineage'], extradata['base64_images'], extradata['usrrating'])
+            sqlvalues = (
+                link,
+                name,
+                breeder,
+                flowertime,
+                sorte,
+                feminized,
+                extradata["infotext1"],
+                extradata["infotext2"],
+                extradata["effects"],
+                extradata["smells"],
+                extradata["tastes"],
+                extradata["lineage"],
+                extradata["base64_images"],
+                extradata["usrrating"],
+            )
             out.append(sqlvalues)
-            #print("loading: " ,name)
+            # print("loading: " ,name)
 
         return out
     except Exception as e:
@@ -169,7 +193,6 @@ def loadbreederstrains(URL):
         logger.error(URL)
         logger.error(e)
         return []
-
 
 
 def parse_tree(element, depth=0):
@@ -190,11 +213,12 @@ def parse_tree(element, depth=0):
 
     return tree
 
+
 def extract_zoomist_container(soup):
     zoomist_container = soup.find("div", class_="zoomist-container")
 
     if not zoomist_container:
-        return "Kein <div class=\"zoomist-container\"> gefunden."
+        return 'Kein <div class="zoomist-container"> gefunden.'
 
     root = zoomist_container.find("ul")
 
@@ -204,29 +228,38 @@ def extract_zoomist_container(soup):
     tree_structure = parse_tree(root)
     return tree_structure
 
+
 def extract_values_by_text(header_text, soup):
-    header = soup.find('h4', string=header_text)
+    header = soup.find("h4", string=header_text)
     if header:
-        values = [div.get_text(strip=True) for div in header.find_next('div').find_all('div', class_='bg-primary-500')]
+        values = [
+            div.get_text(strip=True)
+            for div in header.find_next("div").find_all("div", class_="bg-primary-500")
+        ]
         return values
     return []
+
 
 def loadsinglestrain(URL):
     retdict = {}
     website = requests.get(URL)
-    soup = BeautifulSoup(website.content, 'html.parser')
-    retdict['website'] = URL
+    soup = BeautifulSoup(website.content, "html.parser")
+    retdict["website"] = URL
 
-    list_raw = soup.find_all('div', class_='card')
-    title = soup.find('h1').text.strip() if soup.find('h1') else 'N/A'
-    headers = soup.find_all('h2')
+    list_raw = soup.find_all("div", class_="card")
+    title = soup.find("h1").text.strip() if soup.find("h1") else "N/A"
+    headers = soup.find_all("h2")
 
     results = []
     for header in headers:
-        next_p = header.find_next('p')
+        next_p = header.find_next("p")
         if next_p:
-            results.append({"header": header.get_text(strip=True), "text": next_p.get_text(strip=True)})
-
+            results.append(
+                {
+                    "header": header.get_text(strip=True),
+                    "text": next_p.get_text(strip=True),
+                }
+            )
 
     text1_raw = results[0]
     text1_header = str(text1_raw["header"])
@@ -238,32 +271,28 @@ def loadsinglestrain(URL):
     text2_text = str(text2_raw["text"])
     text2_together = str(text2_header + " /n /n" + text2_text)
 
-    retdict['infotext1'] = text1_together
-    retdict['infotext2'] = text2_together
+    retdict["infotext1"] = text1_together
+    retdict["infotext2"] = text2_together
 
+    effects = extract_values_by_text("Effect/Effectiveness", soup)
+    smells = extract_values_by_text("Smell / Aroma", soup)
+    tastes = extract_values_by_text("Taste", soup)
 
-
-    effects = extract_values_by_text('Effect/Effectiveness', soup)
-    smells = extract_values_by_text('Smell / Aroma', soup)
-    tastes = extract_values_by_text('Taste', soup)
-
-    retdict['effects'] = ','.join(effects)
-    retdict['smells'] = ','.join(smells)
-    retdict['tastes'] = ','.join(tastes)
-
-
+    retdict["effects"] = ",".join(effects)
+    retdict["smells"] = ",".join(smells)
+    retdict["tastes"] = ",".join(tastes)
 
     tree = extract_zoomist_container(soup)
-    retdict['lineage'] = ''.join(tree)
+    retdict["lineage"] = "".join(tree)
 
-    #get images
+    # get images
     loadimages = False
     if loadimages == True:
         img_tags = soup.find_all("img")
         dl_content = []
         for img in img_tags:
             img_url = img.get("src")
-            if 'https://cdn.seedfinder.eu/pics/galerie/' in str(img_url):
+            if "https://cdn.seedfinder.eu/pics/galerie/" in str(img_url):
                 dl_content.append(img_url)
 
         dl_content = list(set(dl_content))
@@ -271,30 +300,34 @@ def loadsinglestrain(URL):
         for im in dl_content:
             baseimage = base64.b64encode(requests.get(im).content)
             images_base64.append(baseimage)
-        retdict['base64_images'] = ' ; '.join(images_base64)
+        retdict["base64_images"] = " ; ".join(images_base64)
     else:
-        retdict['base64_images'] = "N/A"
+        retdict["base64_images"] = "N/A"
 
     target_header = "User rating"
-    h5 = soup.find('h5', string=target_header)
-    retdict['usrrating'] = float(-1)
+    h5 = soup.find("h5", string=target_header)
+    retdict["usrrating"] = float(-1)
     if h5:
-        next_p = h5.find_next_sibling('p')  # Sucht den nächsten <p>-Tag
+        next_p = h5.find_next_sibling("p")  # Sucht den nächsten <p>-Tag
         if next_p:
             newtxt = next_p.text
-            rawtxt0 = newtxt.split('gets ')
-            rawtxt1 = rawtxt0[1].split(' of ')
+            rawtxt0 = newtxt.split("gets ")
+            rawtxt1 = rawtxt0[1].split(" of ")
 
-            retdict['usrrating'] = float(rawtxt1[0])
+            retdict["usrrating"] = float(rawtxt1[0])
 
     return retdict
 
+
 def save_to_db(data):
     try:
-        sqlcursor.executemany("""
+        sqlcursor.executemany(
+            """
             INSERT INTO strainlist (website, strainname, breeder, flowertime, sorte, feminized, infotext1, infotext2, effects, smell, taste, lineage, pictures_base64, userrating)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, data)
+        """,
+            data,
+        )
         sqlconnection.commit()
     except Exception as e:
         print(f"Error saving to database: {e}")
@@ -304,10 +337,11 @@ def process_url_async(url):
     data = loadbreederstrains(url)
     save_to_db(data)
 
+
 if __name__ == "__main__":
     newdataset = getbrederdb()
     start = time.time()
-    os.system('cls' if os.name == 'nt' else 'clear')
+    os.system("cls" if os.name == "nt" else "clear")
     print(maryjane)
 
     with Pool(processes=30) as pool:
