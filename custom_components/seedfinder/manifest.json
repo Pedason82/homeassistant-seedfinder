@@ -2,16 +2,16 @@
   "domain": "seedfinder",
   "name": "Seedfinder",
   "codeowners": [
-    "@dingausmwald"
+    "@Pedason82"
   ],
   "config_flow": true,
   "dependencies": [
     "history",
     "recorder"
   ],
-  "documentation": "https://github.com/dingausmwald/home-assistant-seedfinder/",
+  "documentation": "https://github.com/Pedason82/home-assistant-seedfinder/",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/dingausmwald/home-assistant-seedfinder/issues",
+  "issue_tracker": "https://github.com/Pedason82/home-assistant-seedfinder/issues",
   "loggers": [
     "seedfinder_sdk"
   ],
